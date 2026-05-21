@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ティッシュ消費量分布図 — 無駄地図研究室</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Antique+Soft&family=M+PLUS+1p:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:      #0a0f1a;
+            --surface: #101828;
+            --card:    #141f30;
+            --border:  #1e3050;
+            --accent:  #00e5c8;
+            --accent2: #ff6b35;
+            --accent3: #ffd600;
+            --text:    #d0e8ff;
+            --muted:   #607090;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'M PLUS 1p', sans-serif;
+            line-height: 1.8;
+            min-height: 100vh;
+        }
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,200,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,200,0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ====== NAV ====== */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(10,15,26,0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 40px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-logo {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px; color: var(--accent);
+            letter-spacing: 0.1em; padding: 14px 0;
+            text-decoration: none;
+        }
+        .nav-back {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px; color: var(--muted);
+            text-decoration: none; letter-spacing: 0.1em;
+            padding: 14px 0;
+            transition: color 0.2s;
+        }
+        .nav-back:hover { color: var(--accent); }
+
+        /* ====== MAIN ====== */
+        main {
+            position: relative; z-index: 2;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 50px 30px 80px;
+        }
+
+        /* ====== HEADER ====== */
+        .page-header { margin-bottom: 40px; }
+        .breadcrumb {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; color: var(--muted);
+            letter-spacing: 0.12em; margin-bottom: 16px;
+        }
+        .breadcrumb a { color: var(--accent); text-decoration: none; }
+        .page-tag {
+            display: inline-block;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px; color: var(--accent2);
+            border: 1px solid var(--accent2);
+            padding: 2px 10px; letter-spacing: 0.15em;
+            margin-bottom: 12px;
+        }
+        .page-title {
+            font-family: 'Zen Antique Soft', serif;
+            font-size: clamp(1.6rem, 4vw, 2.6rem);
+            color: #fff;
+            text-shadow: 0 0 30px rgba(0,229,200,0.2);
+            margin-bottom: 10px;
+        }
+        .page-meta {
+            display: flex; gap: 20px; flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .meta-item {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; color: var(--muted);
+            letter-spacing: 0.1em;
+        }
+        .meta-item span { color: var(--text); }
+        .stars { color: var(--accent3); letter-spacing: 3px; }
+
+        /* ====== MAP VIEWER ====== */
+        .map-viewer {
+            background: var(--card);
+            border: 1px solid var(--border);
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .map-viewer-toolbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .toolbar-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; color: var(--accent);
+            letter-spacing: 0.12em;
+        }
+        .toolbar-actions { display: flex; gap: 8px; }
+        .toolbar-btn {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; color: var(--muted);
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 4px 12px; cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            text-decoration: none; display: inline-block;
+        }
+        .toolbar-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+        .map-embed {
+            width: 100%;
+            height: 600px;
+            display: block;
+            border: none;
+        }
+
+        /* ====== INFO CARDS ====== */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 32px;
+        }
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+        }
+        .info-card-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px; color: var(--muted);
+            letter-spacing: 0.15em; margin-bottom: 6px;
+        }
+        .info-card-value {
+            font-size: 14px; color: #fff; font-weight: 700;
+        }
+
+        /* ====== ANALYSIS ====== */
+        .analysis {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            padding: 28px 32px;
+            margin-bottom: 32px;
+        }
+        .analysis h3 {
+            font-family: 'Zen Antique Soft', serif;
+            font-size: 1.1rem; color: #fff;
+            margin-bottom: 14px;
+        }
+        .analysis p { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+        .analysis p:last-child { margin-bottom: 0; }
+        .highlight { color: var(--accent); font-weight: 700; }
+        .useless-note {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px; color: var(--muted);
+            border: 1px dashed var(--border);
+            padding: 8px 14px; margin-top: 14px;
+        }
+
+        /* ====== BACK BUTTON ====== */
+        .back-btn {
+            display: inline-block;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px; letter-spacing: 0.1em;
+            padding: 10px 28px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            text-decoration: none;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+        @media (max-width: 600px) {
+            nav { padding: 0 16px; }
+            main { padding: 30px 16px 60px; }
+            .map-embed { height: 350px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a class="nav-logo" href="index.html">UML_LAB://</a>
+    <a class="nav-back" href="index.html#archive">← 研究アーカイブに戻る</a>
+</nav>
+
+<main>
+    <div class="page-header">
+        <div class="breadcrumb"><a href="index.html">HOME</a> / <a href="index.html#archive">研究アーカイブ</a> / ティッシュ消費量分布図</div>
+        <div class="page-tag">RESEARCH MAP — NO.001</div>
+        <h1 class="page-title">ティッシュ消費量分布図</h1>
+        <div class="page-meta">
+            <div class="meta-item">DATE: <span>2026/04/01</span></div>
+            <div class="meta-item">FORMAT: <span>NetCDF (.nc)</span></div>
+            <div class="meta-item">CRS: <span>WGS84</span></div>
+            <div class="meta-item">無駄度: <span class="stars">★★★☆☆</span></div>
+        </div>
+    </div>
+
+    <!-- マップビューア -->
+    <div class="map-viewer">
+        <div class="map-viewer-toolbar">
+            <span class="toolbar-label">MAP_VIEWER // ティッシュ消費量分布図.pdf</span>
+            <div class="toolbar-actions">
+                <a class="toolbar-btn" href="ティッシュの消費量マップ.pdf" download>↓ PDF DL</a>
+            </div>
+        </div>
+        <iframe
+            class="map-embed"
+            src="ティッシュの消費量マップ.pdf"
+            title="ティッシュ消費量分布図">
+        </iframe>
+    </div>
+
+    <!-- データ概要 -->
+    <div class="info-grid">
+        <div class="info-card">
+            <div class="info-card-label">CORRELATION</div>
+            <div class="info-card-value">r = 0.02</div>
+        </div>
+        <div class="info-card">
+            <div class="info-card-label">P-VALUE</div>
+            <div class="info-card-value">p = 0.94</div>
+        </div>
+        <div class="info-card">
+            <div class="info-card-label">SAMPLE SIZE</div>
+            <div class="info-card-value">47都道府県</div>
+        </div>
+        <div class="info-card">
+            <div class="info-card-label">UNIT</div>
+            <div class="info-card-value">はこ数 / 年</div>
+        </div>
+    </div>
+
+    <!-- 考察 -->
+    <div class="analysis">
+        <h3>研究考察</h3>
+        <p>都道府県別のティッシュ消費量を可視化した結果、<span class="highlight">東北・北海道エリアで消費量が多い傾向</span>が見られた。寒冷地における鼻をかむ頻度との相関が示唆されるが、統計的有意性は皆無である（p = 0.94）。</p>
+        <p>西日本では全体的に消費量が少なく、これが気候によるものか、ハンカチ文化の違いによるものか、あるいは単なる誤差なのかは不明である。</p>
+        <div class="useless-note">※ 本研究は「無駄であること」を証明するために実施されました。無駄であることが証明されたため、研究は成功です。</div>
+    </div>
+
+    <a class="back-btn" href="index.html#archive">← 研究アーカイブに戻る</a>
+</main>
+
+</body>
+</html>
